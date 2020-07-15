@@ -9,8 +9,10 @@
     return file;
 } */
 
+// graph::graph(const char* _file_path, const char * _mis_path) {
 graph::graph(const char* _file_path) {
     file_path = string(_file_path);
+    // mis_path = string(_mis_path);
     n = m = mis = 0;
     nodes = NULL;
     // edges = NULL;
@@ -27,7 +29,12 @@ graph::~graph() {
     } */
 }
 
-void graph::read_graph(){
+/*
+ * graph file format
+ * n m
+ * u v // m lines such that (u, v) in E
+ */
+void graph::read_graph() {
     // FILE* file = open_file(file_path.c_str(), "rb");
     ifstream infile(file_path.c_str());
     if (!infile.is_open()) {
@@ -41,9 +48,7 @@ void graph::read_graph(){
     if (nodes == NULL) nodes = new node[n + 1];
     for (int i = 1; i <= n; ++i) {
         nodes[i] = node((unsigned int)i);
-        // nodes[i].node_status = _MIS;
     }
-    // mis = n;
 
     unsigned int u, v;
     for (int i = 0; i < m; ++i) {
@@ -51,9 +56,39 @@ void graph::read_graph(){
         add_edge(u, v);
     }
     infile.close();
+}
 
-    // cout << "MIS number: " << mis << endl;
-    // check_mis();
+/*
+ * mis file format
+ * mis
+ * u // u in IS
+ */
+void graph::read_mis() {
+    ifstream infile(mis_path.c_str());
+    if (!infile.is_open()) {
+        cout << "file: " << mis_path << " open failed." << endl;
+        exit(1);
+    }
+    infile >> mis;
+    cout << "mis = " << mis << endl;
+    unsigned int u;
+    for (int i = 0; i < mis; ++i) {
+        infile >> u;
+        nodes[u].node_status = _MIS;
+        nodes[u].counter = 0;
+        edge* p_edge = nodes[u].edges;
+        while (p_edge != NULL) {
+            if (nodes[p_edge->node_id].node_status == _MIS) {
+                cout << "WA two adjacent vertices in is.\n";
+                exit(1);
+            } else {
+                nodes[p_edge->node_id].node_status = _ADJACENT;
+                nodes[p_edge->node_id].counter++;
+            }
+            p_edge = p_edge->next_edge;
+        }
+    }
+    infile.close();
 }
 
 void graph::handle_update(const update& _update) {
@@ -84,7 +119,7 @@ void graph::greedy() {
     for (int i = 1; i < n; ++i)
         degree_buckets[i] += degree_buckets[i - 1];
 
-    unsigned int* order = new unsigned int[n + 1];
+    unsigned int* order = new unsigned int[n + 1]; // order[i]  = j means that the order of node i is j
     for (int i = 1; i <= n; ++i) {
         order[i] = degree_buckets[nodes[i].degree];
         degree_buckets[nodes[i].degree]--;
@@ -92,7 +127,7 @@ void graph::greedy() {
 
     /* for (int i = 1; i <= n; ++i)
         std::cout << "vertex " << i << " order " << order[i] << std::endl; */
-    unsigned int* greedy_order = new unsigned int[n + 1];
+    unsigned int* greedy_order = new unsigned int[n + 1]; // greedy_order[i] = j means that No.i is node j
     for (int i = 1; i <= n; ++i) {
         greedy_order[order[i]] = i;
     }
@@ -106,7 +141,7 @@ void graph::greedy() {
             mis++;
             edge* p_edge = nodes[greedy_order[i]].edges;
             while (p_edge != NULL) {
-                nodes[p_edge->node_id].node_status = _DOMINATED;
+                nodes[p_edge->node_id].node_status = _ADJACENT;
                 nodes[p_edge->node_id].counter++;
                 p_edge = p_edge->next_edge;
             }
@@ -123,7 +158,121 @@ void graph::greedy() {
 }
 
 void graph::greedy_dynamic() {
+    unsigned int* degree = new unsigned int[n + 1];
+    for (int i = 1; i <= n; ++i) {
+        degree[i] = nodes[i].degree;
+    }
 
+    unsigned int* degree_buckets = new unsigned int[n];
+    memset(degree_buckets, 0, sizeof(unsigned int)*n);
+    for (int i = 1; i <= n; ++i)
+        degree_buckets[degree[i]]++;
+
+    for (int i = 1; i < n; ++i)
+        degree_buckets[i] += degree_buckets[i - 1];
+
+    // order[i]  = j means that the order of node i is j
+    unsigned int* order = new unsigned int[n + 1];
+    for (int i = 1; i <= n; ++i) {
+        order[i] = degree_buckets[degree[i]];
+        degree_buckets[degree[i]]--;
+    }
+
+    for (int i = 1; i <= n; ++i)
+        std::cout << "vertex " << i << " order " << order[i] << std::endl;
+
+    // no[i] = j means that No.i is node j
+    unsigned int* no = new unsigned int[n + 1];
+    for (int i = 1; i <= n; ++i) {
+        no[order[i]] = i;
+    }
+
+    for (int i = 1; i <= n; ++ i)
+        std::cout << i << ": " << no[i] << std::endl;
+
+    // degree_starts[i] = j means that the first vertex with degree i is at j in no
+    unsigned int* degree_starts = new unsigned int[n + 1];
+
+    unsigned int i = 0, j = 1;
+    while (j <= n) {
+        degree_starts[i] = j;
+        while (j<=n && degree[no[j]] == i) {
+            ++ j;
+        }
+        ++ i;
+    }
+    degree_starts[i] = j;
+
+    for (int i = 0; i <= n; ++ i) {
+        std::cout << i << ": " << degree_starts[i] << std::endl;
+    }
+
+
+    int res = 0;
+    // | d = 1 | d = 2 | ... | d = n |
+    // 当d = i的点的邻居被删除时，改点度减一，移动到d = i的队首，将degree_starts[i]后移
+    for (int i = 1; i <= n; ++ i) {
+        cout << i << ": ";
+        for (int i = 1; i <= n; ++ i) {
+            cout << no[i] << " ";
+        }
+        cout << endl;
+        unsigned int u = no[i];
+        cout << "processing: " << u << endl;
+        degree_starts[degree[u]] = i + 1;
+        if (nodes[u].node_status != _UNVISITD) continue;
+        ++ res;
+        nodes[u].node_status = _MIS;
+        cout << u << " in MIS\n";
+        edge* p_edge = nodes[u].edges;
+        while (p_edge != NULL) {
+            cout << "node id: " << p_edge->node_id << ": ";
+            for (int i = 1; i <= n; ++ i) {
+                cout << no[i] << " ";
+            }
+            cout << endl;
+            unsigned int v = p_edge->node_id;
+            nodes[v].counter++;
+            if (nodes[v].node_status == _UNVISITD) {
+                nodes[v].node_status = _ADJACENT;
+                cout << v << " removed by " << u << endl;
+                edge* p_edge_v = nodes[v].edges;
+                while (p_edge_v != NULL) {
+                    unsigned int w = p_edge_v->node_id;
+                    if (nodes[w].node_status == _UNVISITD && w != u) {
+                        unsigned ds = degree_starts[degree[w]];
+                        order[no[ds]] = order[w];
+                        swap(no[ds], no[order[w]]);
+                        order[w] = ds;
+                        degree_starts[degree[w]]++;
+                        degree[w]--;
+                        if (degree_starts[degree[w]] <= i) {
+                            /* cout << degree[w] << "," << degree[u] << endl;
+                            cout << degree_starts[degree[w]] << "," << i << endl;
+                            cout << "i: " << i << " w: " << w << " degree:" << degree[w] << " degree_starts: " << degree_starts[degree[w]] << endl; */
+                            degree_starts[degree[w]] = i + 1;
+                        }
+                    }
+                    p_edge_v = p_edge_v->next_edge;
+                }
+            }
+            p_edge = p_edge->next_edge;
+        }
+    }
+
+    cout << "MIS number: " << res << endl;
+
+    for (int i = 1; i <= n; ++i) {
+        if (nodes[i].node_status == _MIS)
+            cout << nodes[i].node_id << " ";
+    }
+    cout << endl;
+
+    delete[] degree;
+    delete[] degree_buckets;
+    delete[] order;
+    delete[] no;
+    delete[] degree_starts;
 }
 
 
@@ -188,7 +337,7 @@ void graph::check_mis() {
                     cout << "WA two adjacent vertices in is.\n";
                 p_edge = p_edge->next_edge;
             }
-        } else if (nodes[i].node_status == _DOMINATED && maximal) {
+        } else if (nodes[i].node_status == _ADJACENT && maximal) {
             bool find = false;
             edge* p_edge = nodes[i].edges;
             while (p_edge != NULL) {
@@ -235,22 +384,40 @@ void graph::add_edge(unsigned int u, unsigned int v) {
         cout << "vertices" << u << " or " << v << "is deleted.\n";
         return;
     }
+
     nodes[u].degree++;
-    edge* p_edge_u = new edge(v);
-    if (nodes[u].edges != NULL)
-        p_edge_u->next_edge = nodes[u].edges;
-    nodes[u].edges = p_edge_u;
+    edge* p_newedge = new edge(v);
+    if (nodes[u].edges == NULL) nodes[u].edges = p_newedge;
+    else {
+        edge* p_edge = nodes[u].edges;
+        edge* p_pre_edge = p_edge;
+        while (p_edge != NULL && p_edge->node_id < v) {
+            p_pre_edge = p_edge;
+            p_edge = p_edge->next_edge;
+        }
+        p_pre_edge->next_edge = p_newedge;
+        p_newedge->next_edge = p_edge;
+    }
+
 
     nodes[v].degree++;
-    edge* p_edge_v = new edge(u);
-    if (nodes[v].edges != NULL)
-        p_edge_v->next_edge = nodes[v].edges;
-    nodes[v].edges = p_edge_v;
+    p_newedge = new edge(u);
+    if (nodes[v].edges == NULL) nodes[v].edges = p_newedge;
+    else {
+        edge* p_edge = nodes[v].edges;
+        edge* p_pre_edge = p_edge;
+        while (p_edge != NULL && p_edge->node_id < u) {
+            p_pre_edge = p_edge;
+            p_edge = p_edge->next_edge;
+        }
+        p_pre_edge->next_edge = p_newedge;
+        p_newedge->next_edge = p_edge;
+    }
 
-    if (nodes[u].node_status == _MIS && nodes[v].node_status == _MIS) {
+    /* if (nodes[u].node_status == _MIS && nodes[v].node_status == _MIS) {
         if (nodes[u].degree < nodes[v].degree) swap(u, v);
         vector<unsigned int> v_in, v_out;
-        localserach_one_imp(u, v_in, v_out);
+        // localserach_one_imp(u, v_in, v_out);
         if (v_in.size() > v_out.size()) {
             // update_neighbors(u);
             update_neighbors(v_in, v_out);
@@ -259,7 +426,7 @@ void graph::add_edge(unsigned int u, unsigned int v) {
 
         v_in.clear();
         v_out.clear();
-        localserach_one_imp(u, v_in, v_out);
+        // localserach_one_imp(u, v_in, v_out);
         if (v_in.size() > v_out.size()) {
             // update_neighbors(v);
             update_neighbors(v_in, v_out);
@@ -268,10 +435,10 @@ void graph::add_edge(unsigned int u, unsigned int v) {
 
         update_neighbors(u);
 
-    } else if (nodes[u].node_status == _MIS && nodes[v].node_status == _DOMINATED)
+    } else if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT)
         nodes[v].counter++;
-    else if (nodes[u].node_status == _DOMINATED && nodes[v].node_status == _MIS)
-        nodes[u].counter++;
+    else if (nodes[u].node_status == _ADJACENT && nodes[v].node_status == _MIS)
+        nodes[u].counter++; */
 }
 
 void graph::delete_edge(unsigned int u, unsigned int v) {
@@ -283,52 +450,52 @@ void graph::delete_edge(unsigned int u, unsigned int v) {
         cout << "edge (" << u << ", " << v << ") does not exits.\n";
         return;
     }
-    edge* p_edge_u = nodes[u].edges;
-    edge* p_pre_edge_u = p_edge_u;
-    while (p_edge_u != NULL) {
-        if (p_edge_u->node_id == v) {
-            if (p_pre_edge_u == p_edge_u)
-                nodes[u].edges = p_edge_u->next_edge;
+    edge* p_edge = nodes[u].edges;
+    edge* p_pre_edge = p_edge;
+    while (p_edge != NULL) {
+        if (p_edge->node_id == v) {
+            if (p_pre_edge == p_edge)
+                nodes[u].edges = p_edge->next_edge;
             else
-                p_pre_edge_u->next_edge = p_edge_u->next_edge;
-            delete p_edge_u;
+                p_pre_edge->next_edge = p_edge->next_edge;
+            delete p_edge;
             nodes[u].degree--;
             // cout << "delete edge: (" << u << ", " << v << ")\n";
             break;
         }
-        p_pre_edge_u = p_edge_u;
-        p_edge_u = p_edge_u->next_edge;
+        p_pre_edge = p_edge;
+        p_edge = p_edge->next_edge;
     }
-    if (p_edge_u == NULL) {
+    if (p_edge == NULL) {
         cout << "edge (" << u << ", " << v << ") does not exist.\n";
         return;
     }
 
-    edge* p_edge_v = nodes[v].edges;
-    edge* p_pre_edge_v = p_edge_v;
-    while (p_edge_v != NULL) {
-        if (p_edge_v->node_id == u) {
-            if (p_pre_edge_v == p_edge_v)
-                nodes[v].edges = p_edge_v->next_edge;
+    p_edge = nodes[v].edges;
+    p_pre_edge = p_edge;
+    while (p_edge != NULL) {
+        if (p_edge->node_id == u) {
+            if (p_pre_edge == p_edge)
+                nodes[v].edges = p_edge->next_edge;
             else
-                p_pre_edge_v->next_edge = p_edge_v->next_edge;
-            delete p_edge_v;
+                p_pre_edge->next_edge = p_edge->next_edge;
+            delete p_edge;
             nodes[v].degree--;
             // cout << "delete edge: (" << v << ", " << u << ")\n";
             break;
         }
-        p_pre_edge_v = p_edge_v;
-        p_edge_v = p_edge_v->next_edge;
+        p_pre_edge = p_edge;
+        p_edge = p_edge->next_edge;
     }
 
-    if (p_edge_v == NULL) {
+    if (p_edge == NULL) {
         cout << "edge (" << u << ", " << v << ") does not exist.\n";
         return;
     }
 
-    if (nodes[u].node_status == _DOMINATED && nodes[v].node_status == _MIS)
+    /* if (nodes[u].node_status == _ADJACENT && nodes[v].node_status == _MIS)
         swap(u, v);
-    if (nodes[u].node_status == _MIS && nodes[v].node_status == _DOMINATED) {
+    if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT) {
         nodes[v].counter--;
         if (nodes[v].counter == 0) {
             nodes[v].node_status = _MIS;
@@ -339,67 +506,131 @@ void graph::delete_edge(unsigned int u, unsigned int v) {
                 p_edge_v = p_edge_v->next_edge;
             }
         }
-    }
+    } */
 }
 
-void graph::update_neighbors(const unsigned int& u) {
-    nodes[u].node_status = _DOMINATED;
-    nodes[u].counter = 1;
-    mis--;
-    edge* p_edge_u = nodes[u].edges;
-    while(p_edge_u != NULL) {
-        nodes[p_edge_u->node_id].counter--;
-        if (nodes[p_edge_u->node_id].counter == 0) {
-            nodes[p_edge_u->node_id].node_status = _MIS;
-            mis++;
-            edge* p_edge_w = nodes[p_edge_u->node_id].edges;
-            while (p_edge_w != NULL) {
-                nodes[p_edge_w->node_id].counter++;
-                p_edge_w = p_edge_w->next_edge;
-            }
+void graph::update_inf(const update& _update) {
+    unsigned int u, v;
+    switch(_update.type) {
+    case _VERTEX_ADDITION:
+        // add_vertex(_update.u);
+        break;
+    case _VERTEX_DELETION:
+        // delete_vertex(_update.u);
+        break;
+    case _EDGE_ADDITION:
+        u = _update.u; v = _update.v;
+        if (nodes[u].node_status == _MIS && nodes[v].node_status == _MIS) {
+            nodes[u].node_status = _CONFLICT;
+            nodes[v].node_status = _CONFLICT;
+        } else if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT) {
+            nodes[v].counter++;
+        } else if (nodes[u].node_status == _ADJACENT && nodes[v].node_status == _MIS) {
+            nodes[u].counter++;
         }
-        p_edge_u = p_edge_u->next_edge;
+
+        break;
+    case _EDGE_DELETION:
+        u = _update.u; v = _update.v;
+        if (nodes[u].node_status == _ADJACENT && nodes[v].node_status == _MIS)
+            swap(u, v);
+        if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT) {
+            nodes[v].counter--;
+            if (nodes[v].counter == 0)
+                nodes[v].node_status = _UNVISITD;
+        }
+        break;
+    default:
+        break;
     }
 }
 
-void graph::update_neighbors(const vector<unsigned int>& v_in, const vector<unsigned int>& v_out) {
-    // update information of v_out
-    for (int i = 0; i < v_out.size(); ++i) {
-        unsigned int id = v_out[i];
-        nodes[id].node_status = _UNVISITD;
-        nodes[id].counter = 0;
-        edge* p_edge = nodes[id].edges;
+void graph::greedy_dynamic(vector<unsigned int>& I) {
+
+}
+
+vector<unsigned int> graph::one_improvement_vertex(unsigned int u) {
+    vector<unsigned int> I;
+    vector<unsigned int> V;
+    edge* p_edge = nodes[u].edges;
+    while (p_edge != NULL) {
+        if (nodes[p_edge->node_id].counter == 1) V.push_back(p_edge->node_id);
+        p_edge = p_edge->next_edge;
+    }
+    // construct subgraph G[V]
+    cout << "subgraph initialize.\n";
+    unsigned int subgraph_n = V.size();
+    node* subgraph = new node[subgraph_n + 1];
+    for (int i = 0; i < subgraph_n; ++ i) {
+        subgraph[i + 1] = node((unsigned int)V[i]);
+        edge* p_edge = nodes[V[i]].edges;
         while (p_edge != NULL) {
-            if (nodes[p_edge->node_id].node_status == _MIS) {
-                nodes[id].node_status = _DOMINATED;
-                nodes[id].counter++;
+            if (find(V.begin(), V.end(), p_edge->node_id) != V.end()) {
+                subgraph[i + 1].degree++;
+                edge* p_newedge = new edge(p_edge->node_id);
+                p_newedge->next_edge = subgraph[i + 1].edges;
+                subgraph[i + 1].edges = p_newedge;
             }
+            p_edge = p_edge->next_edge;
         }
     }
-}
-
-
-/*
- * find maximum v_in with no conflict
- */
-void graph::localserach_one_imp(const unsigned int& u, vector<unsigned int>& v_in, vector<unsigned int>& v_out) {
-    if (u <= 0 || u > n || nodes[u].node_status == _DELETED) {
-        cout << "vertex " << u << " does not exist.\n";
-        return;
+    // shou subgraph
+    cout << "subgraph complete.\n";
+    for (int i = 1; i <= n_subgraph; ++i) {
+        cout << subgraph[i].node_id << " degree: " << subgraph[i].degree << " adjacent list : ";
+        edge* p_edge = subgraph[i].edges;
+        while (p_edge != NULL) {
+            cout << p_edge->node_id << ", ";
+            p_edge = p_edge->next_edge;
+        }
+        cout << endl;
     }
-    v_out.push_back(u);
-    // find candidates
 
+    return I;
+}
+
+void graph::testsubgraph() {
+    vector<unsigned int> V;
+    for (int i = 1; i <= n; ++i) {
+        if (rand()/(double)RAND_MAX > .5) {
+            V.push_back(i);
+            cout << i << " ";
+        }
+    }
+    cout << V.size() << endl;
+    unsigned int n_subgraph = V.size();
+    node* subgraph = new node[n_subgraph + 1];
+    cout << "subgraph initialize.\n";
+    for (int i = 0; i < V.size(); ++i) {
+        subgraph[i + 1] = node((unsigned int)V[i]);
+        edge* p_edge = nodes[V[i]].edges;
+        while (p_edge != NULL) {
+            if (find(V.begin(), V.end(), p_edge->node_id) != V.end()) {
+                subgraph[i + 1].degree++;
+                edge* p_newedge = new edge(p_edge->node_id);
+                p_newedge->next_edge = subgraph[i + 1].edges;
+                subgraph[i + 1].edges = p_newedge;
+            }
+            p_edge = p_edge->next_edge;
+        }
+    }
+
+    for (int i = 1; i <= n_subgraph; ++i) {
+        cout << subgraph[i].node_id << " degree: " << subgraph[i].degree << " adjacent list : ";
+        edge* p_edge = subgraph[i].edges;
+        while (p_edge != NULL) {
+            cout << p_edge->node_id << ", ";
+            p_edge = p_edge->next_edge;
+        }
+        cout << endl;
+    }
+    delete[] subgraph;
 
 }
 
-void graph::localsearch_two_imp(const unsigned int& u, vector<unsigned int>& v_in, vector<unsigned int>& v_out) {
-     if (u <= 0 || u > n || nodes[u].node_status == _DELETED) {
-        cout << "vertex " << u << " does not exist.\n";
-        return;
-     }
-
-
+void graph::test() {
+    delete_edge(3, 5);
+    delete_edge(4, 2);
 }
 
 /*
@@ -410,8 +641,11 @@ int main(int argc, char *argv[])
     // std::cout << argv[1] << std::endl;
     graph g(argv[1]);
     g.read_graph();
-    // g.show();
+    g.show();
     // g.test();
-    g.greedy();
+    // g.show();
+    // g.greedy();
+    g.greedy_dynamic();
+    // g.testsubgraph();
     return 0;
 }

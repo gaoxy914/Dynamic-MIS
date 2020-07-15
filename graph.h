@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <cmath>
 
 #define swap(u, v) {unsigned int temp = u; u = v; v = temp;}
 
@@ -31,8 +32,12 @@ struct update {
         : type(_type), u(_u), v(_v) {}
 };
 
-enum status {
+/* enum status {
     _MIS, _DOMINATED, _UNVISITD, _DELETED
+}; */
+
+enum status {
+    _MIS, _ADJACENT, _UNVISITD, _CONFLICT, _DELETED
 };
 
 struct edge {
@@ -43,7 +48,7 @@ struct edge {
 };
 
 struct node {
-    unsigned int node_id;
+    unsigned int node_id; // start from 1
     unsigned int degree;
     status node_status;
     // unsigned int offset;
@@ -59,16 +64,19 @@ struct node {
 class graph {
 private:
     string file_path;
+    string mis_path;
     unsigned int n, m, mis;
 
     node* nodes;
     // unsigned int* edges;
 
 public:
+    // graph(const char* _file_path, const char* _mis_path);
     graph(const char* _file_path);
     ~graph();
 
     void read_graph();
+    void read_mis();
 
     void handle_update(const update& _update);
 
@@ -78,6 +86,10 @@ public:
     void show();
     void experiment(const char* _inst_file);
 
+    void testsubgraph();
+
+    void test();
+
 private:
     void check_mis();
 
@@ -86,11 +98,12 @@ private:
     void add_edge(unsigned int u, unsigned int v);
     void delete_edge(unsigned int u, unsigned int v);
 
-    void update_neighbors(const unsigned int& u);
-    void update_neighbors(const vector<unsigned int>& v_in, const vector<unsigned int>& v_out);
+    void update_inf(const update& _update);
 
-    void localserach_one_imp(const unsigned int& u, vector<unsigned int>& v_in, vector<unsigned int>& v_out);
-    void localsearch_two_imp(const unsigned int& u, vector<unsigned int>& v_in, vector<unsigned int>& v_out);
+    void greedy_dynamic(vector<unsigned int>& I);
+
+    vector<unsigned int> one_improvement_vertex(unsigned int u);
+
 };
 
 #endif
