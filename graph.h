@@ -73,6 +73,7 @@ private:
 public:
     // graph(const char* _file_path, const char* _mis_path);
     graph(const char* _file_path);
+    graph(unsigned int _n);
     ~graph();
 
     void read_graph();
@@ -86,21 +87,23 @@ public:
     void show();
     void experiment(const char* _inst_file);
 
-    void testsubgraph();
+    void test_subgraph();
 
     void test();
 
 private:
     void check_mis();
 
-    void add_vertex(const unsigned int& u);
-    void delete_vertex(const unsigned int& u);
+    void add_node(unsigned int index, unsigned int node_id);
+
+    // void add_vertex(const unsigned int& u);
+    // void delete_vertex(const unsigned int& u);
     void add_edge(unsigned int u, unsigned int v);
     void delete_edge(unsigned int u, unsigned int v);
 
     void update_inf(const update& _update);
 
-    void greedy_dynamic(vector<unsigned int>& I);
+    void greedy_dynamic(node* subgraph, unsigned int n);
 
     vector<unsigned int> one_improvement_vertex(unsigned int u);
 

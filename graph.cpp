@@ -18,6 +18,14 @@ graph::graph(const char* _file_path) {
     // edges = NULL;
 }
 
+graph::graph(unsigned int _n) {
+    file_path = mis_path = "";
+    n = _n;
+    m = mis = 0;
+    nodes = NULL;
+    nodes = new node[n + 1];
+}
+
 graph::~graph() {
     if (nodes != NULL) {
         delete[] nodes;
@@ -93,12 +101,12 @@ void graph::read_mis() {
 
 void graph::handle_update(const update& _update) {
     switch(_update.type) {
-    case _VERTEX_ADDITION:
+    /* case _VERTEX_ADDITION:
         add_vertex(_update.u);
         break;
     case _VERTEX_DELETION:
         delete_vertex(_update.u);
-        break;
+        break; */
     case _EDGE_ADDITION:
         add_edge(_update.u, _update.v);
         break;
@@ -355,7 +363,15 @@ void graph::check_mis() {
     }
 }
 
-void graph::add_vertex(const unsigned int& u) {
+void graph::add_node(unsigned int index, unsigned int node_id) {
+    if (index <= 0 || index > n) {
+        cout << "array out of range.\n";
+        exit(1);
+    }
+    nodes[index] = node(node_id);
+}
+
+/* void graph::add_vertex(const unsigned int& u) {
     if (u <= 0 || u > n + _INST_NUM) {
         cout << "vertex number " << u << " our of range.\n";
         return;
@@ -373,7 +389,7 @@ void graph::delete_vertex(const unsigned int& u) {
         p_edge = p_edge->next_edge;
     }
     nodes[u].node_status = _DELETED;
-}
+} */
 
 void graph::add_edge(unsigned int u, unsigned int v) {
     if (u <= 0 || u > n || v <= 0 || v > n) {
@@ -545,8 +561,83 @@ void graph::update_inf(const update& _update) {
     }
 }
 
-void graph::greedy_dynamic(vector<unsigned int>& I) {
+void graph::greedy_dynamic(node* subgraph, unsigned int n) {
+    unsigned int* degree = new unsigned int[n + 1];
+    for (int i = 1; i <= n; ++ i) degree[i] = subgraph[i].degree;
 
+    unsigned int* degree_buckets = new unsigned int[n];
+    memset(degree_buckets, 0, sizeof(unsigned int)*n);
+    for (int i = 1; i <= n; ++ i) degree_buckets[degree[i]]++;
+    for (int i = 1; i < n; ++ i) degree_buckets[i] += degree_buckets[i - 1];
+
+    // order[i] = j means that the order of node i is j
+    unsigned int* order = new unsigned int[n + 1];
+    for (int i = 1; i <= n; ++ i) {
+        order[i] = degree_buckets[degree[i]];
+        degree_buckets[degree[i]]--;
+    }
+
+    // no[i] = j means that No.i is node j
+    // if order[i] = j then no[j] = i
+    unsigned int* no = new unsigned int[n + 1];
+    for (int i = 1; i <= n; ++ i) no[order[i]] = i;
+
+    // degree_starts[i] = j means that the first vertex with degree i is at j in no array
+    unsigned int* degree_starts = new unsigned int[n + 1];
+    int i = 1, j = 0;
+    while (i <= n) {
+        degree_starts[j] = i;
+        while (i <= n && degree[no[i]] == j) ++ i;
+        ++ j;
+    }
+
+    for (int i = 1; i <= n; ++ i) {
+        unsigned int u = no[i];
+        degree_starts[degree[u]] = i + 1;
+        if (subgraph[u].node_status != _UNVISITD) continue;
+        subgraph[u].node_status = _MIS;
+        edge* p_edge = subgraph[u].edges;
+        while (p_edge != NULL) {
+            unsigned int v = p_edge->node_id;
+            subgraph[v].node_status = _ADJACENT;
+            edge* p_edge_v = subgraph[v].edges;
+            while (p_edge_v != NULL) {
+                unsigned int w = p_edge_v->node_id;
+                if (subgraph[w].node_status == _UNVISITD) {
+                    // 把w移动到和他度一样元素的首位, 即和位于ds位置的元素互换位置
+                    unsigned int ds = degree_starts[degree[w]];
+                    order[no[ds]] = order[w];
+                    swap(no[ds], no[order[w]]);
+                    order[w] = ds;
+                    degree_starts[degree[w]] ++;
+                    degree[w] --;
+                    // 如果再向前交换，不能小于i + 1，否则改点不会被处理
+                    if (degree_starts[degree[w]] <= i) degree_starts[degree[w]] = i + 1;
+                }
+                p_edge_v = p_edge_v->next_edge;
+            }
+            p_edge = p_edge->next_edge;
+        }
+    }
+
+    delete[] degree;
+    delete[] degree_buckets;
+    delete[] order;
+    delete[] no;
+    delete[] degree_starts;
+
+#ifndef NDEBUG
+    for (int i = 1; i <= n; ++ i) {
+        cout << subgraph[i].node_id << " degree: " << subgraph[i].degree
+            << " node status: " << subgraph[i].node_status << " adjacent list : ";
+        edge* p_edge = subgraph[i].edges;
+        while (p_edge != NULL) {
+            cout << p_edge->node_id << ", ";
+            p_edge = p_edge->next_edge;
+        }
+        cout << endl;
+    }
+#endif
 }
 
 vector<unsigned int> graph::one_improvement_vertex(unsigned int u) {
@@ -559,37 +650,15 @@ vector<unsigned int> graph::one_improvement_vertex(unsigned int u) {
     }
     // construct subgraph G[V]
     cout << "subgraph initialize.\n";
-    unsigned int subgraph_n = V.size();
-    node* subgraph = new node[subgraph_n + 1];
-    for (int i = 0; i < subgraph_n; ++ i) {
-        subgraph[i + 1] = node((unsigned int)V[i]);
-        edge* p_edge = nodes[V[i]].edges;
-        while (p_edge != NULL) {
-            if (find(V.begin(), V.end(), p_edge->node_id) != V.end()) {
-                subgraph[i + 1].degree++;
-                edge* p_newedge = new edge(p_edge->node_id);
-                p_newedge->next_edge = subgraph[i + 1].edges;
-                subgraph[i + 1].edges = p_newedge;
-            }
-            p_edge = p_edge->next_edge;
-        }
-    }
-    // shou subgraph
+    // show subgraph
     cout << "subgraph complete.\n";
-    for (int i = 1; i <= n_subgraph; ++i) {
-        cout << subgraph[i].node_id << " degree: " << subgraph[i].degree << " adjacent list : ";
-        edge* p_edge = subgraph[i].edges;
-        while (p_edge != NULL) {
-            cout << p_edge->node_id << ", ";
-            p_edge = p_edge->next_edge;
-        }
-        cout << endl;
-    }
+
+    // greedy_dynamic(subgraph, subgraph_n);
 
     return I;
 }
 
-void graph::testsubgraph() {
+void graph::test_subgraph() {
     vector<unsigned int> V;
     for (int i = 1; i <= n; ++i) {
         if (rand()/(double)RAND_MAX > .5) {
@@ -599,7 +668,14 @@ void graph::testsubgraph() {
     }
     cout << V.size() << endl;
     unsigned int n_subgraph = V.size();
-    node* subgraph = new node[n_subgraph + 1];
+    unsigned int* index = new unsigned int[n + 1];
+    memset(index, 0, sizeof(unsigned int)*(n + 1));
+    for (int i = 0; i < V.size(); ++ i) {
+        index[V[i]] = i + 1;
+    }
+
+    // implement with pointer
+    /* node* subgraph = new node[n_subgraph + 1];
     cout << "subgraph initialize.\n";
     for (int i = 0; i < V.size(); ++i) {
         subgraph[i + 1] = node((unsigned int)V[i]);
@@ -607,7 +683,7 @@ void graph::testsubgraph() {
         while (p_edge != NULL) {
             if (find(V.begin(), V.end(), p_edge->node_id) != V.end()) {
                 subgraph[i + 1].degree++;
-                edge* p_newedge = new edge(p_edge->node_id);
+                edge* p_newedge = new edge(index[p_edge->node_id]);
                 p_newedge->next_edge = subgraph[i + 1].edges;
                 subgraph[i + 1].edges = p_newedge;
             }
@@ -616,15 +692,45 @@ void graph::testsubgraph() {
     }
 
     for (int i = 1; i <= n_subgraph; ++i) {
-        cout << subgraph[i].node_id << " degree: " << subgraph[i].degree << " adjacent list : ";
+        cout << subgraph[i].node_id << " degree: " << subgraph[i].degree
+            << " node status " << subgraph[i].node_status << " adjacent list : ";
         edge* p_edge = subgraph[i].edges;
         while (p_edge != NULL) {
             cout << p_edge->node_id << ", ";
             p_edge = p_edge->next_edge;
         }
         cout << endl;
+    } */
+
+    // greedy_dynamic(subgraph, n_subgraph);
+
+    // implement by class
+
+    cout << n_subgraph << endl;
+
+    graph subgraph(n_subgraph);
+    cout << "initialize\n";
+    for (int i = 0; i < n_subgraph; ++ i) {
+        // cout << i << " " << V[i] << endl;
+        subgraph.add_node(i + 1, (unsigned int)V[i]);
     }
-    delete[] subgraph;
+    cout << " node done\n";
+    for (int i = 0; i < n_subgraph; ++ i) {
+        edge* p_edge = nodes[V[i]].edges;
+        while (p_edge != NULL) {
+            if (p_edge->node_id > V[i]) {
+                if (find(V.begin(), V.end(), p_edge->node_id) != V.end()) {
+                    subgraph.add_edge(i + 1, index[p_edge->node_id]);
+                }
+            }
+            p_edge = p_edge->next_edge;
+        }
+    }
+
+    subgraph.show();
+
+    delete[] index;
+    // delete[] subgraph;
 
 }
 
@@ -645,7 +751,7 @@ int main(int argc, char *argv[])
     // g.test();
     // g.show();
     // g.greedy();
-    g.greedy_dynamic();
-    // g.testsubgraph();
+    // g.greedy_dynamic();
+    g.test_subgraph();
     return 0;
 }
