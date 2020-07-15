@@ -82,7 +82,7 @@ public:
     void handle_update(const update& _update);
 
     void greedy();
-    void greedy_dynamic();
+    void greedy_dynamic(vector<unsigned int>& I);
 
     void show();
     void experiment(const char* _inst_file);
@@ -102,8 +102,6 @@ private:
     void delete_edge(unsigned int u, unsigned int v);
 
     void update_inf(const update& _update);
-
-    void greedy_dynamic(node* subgraph, unsigned int n);
 
     vector<unsigned int> one_improvement_vertex(unsigned int u);
 
