@@ -210,6 +210,7 @@ void graph::greedy_dynamic(vector<unsigned int>& I) {
         degree_starts[degree[u]] = i + 1;
         if (nodes[u].node_status != _UNVISITD) continue;
         nodes[u].node_status = _MIS;
+        res ++;
         I.push_back(nodes[u].node_id);
         edge* p_edge = nodes[u].edges;
         while (p_edge != NULL) {
@@ -531,8 +532,7 @@ void graph::update_inf(const update& _update) {
     }
 }
 
-vector<unsigned int> graph::one_improvement_vertex(unsigned int u) {
-    vector<unsigned int> I;
+int graph::one_improvement_vertex(unsigned int u, vector<unsigned int>& I) {
     vector<unsigned int> V;
     edge* p_edge = nodes[u].edges;
     while (p_edge != NULL) {
@@ -564,7 +564,11 @@ vector<unsigned int> graph::one_improvement_vertex(unsigned int u) {
 
     subgraph.greedy_dynamic(I);
 
-    return I;
+    return I.size();
+}
+
+int graph::two_improvement_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I) {
+    return 0;
 }
 
 void graph::test_subgraph() {
@@ -624,7 +628,7 @@ void graph::test_subgraph() {
     }
     for (int i = 0; i < n_subgraph; ++ i) {
         edge* p_edge = nodes[V[i]].edges;
-        while (p_edge != NULL) {
+        /* while (p_edge != NULL) {
             if (p_edge->node_id > V[i]) {
                 if (find(V.begin(), V.end(), p_edge->node_id) != V.end()) {
 #ifndef NDEBUG
@@ -635,6 +639,20 @@ void graph::test_subgraph() {
                 }
             }
             p_edge = p_edge->next_edge;
+        } */
+        int j = i + 1;
+        while (p_edge != NULL && j < V.size()) {
+            if (p_edge->node_id > V[i]) {
+                if (p_edge->node_id > V[j]) j ++;
+                else if (p_edge->node_id < V[j]) p_edge = p_edge->next_edge;
+                else {
+                    subgraph.add_edge(i + 1, index[p_edge->node_id]);
+                    j ++;
+                    p_edge = p_edge->next_edge;
+                }
+            } else {
+                p_edge = p_edge->next_edge;
+            }
         }
     }
 

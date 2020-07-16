@@ -1,14 +1,7 @@
 #ifndef _GRAPH_H
 #define _GRAPH_H
 
-#include <string>
-#include <vector>
-#include <cassert>
-#include <cstdio>
-#include <iostream>
-#include <fstream>
-#include <algorithm>
-#include <cmath>
+#include "misheader.h"
 
 #define swap(u, v) {unsigned int temp = u; u = v; v = temp;}
 
@@ -103,7 +96,8 @@ private:
 
     void update_inf(const update& _update);
 
-    vector<unsigned int> one_improvement_vertex(unsigned int u);
+    int one_improvement_vertex(unsigned int u, vector<unsigned int>& I);
+    int two_improvement_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I);
 
 };
 
