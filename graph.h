@@ -3,8 +3,6 @@
 
 #include "misheader.h"
 
-#define swap(u, v) {unsigned int temp = u; u = v; v = temp;}
-
 #define _VERTEX_ADDITION 0
 #define _VERTEX_DELETION 1
 #define _EDGE_ADDITION 2
@@ -98,6 +96,8 @@ private:
 
     int one_improvement_vertex(unsigned int u, vector<unsigned int>& I);
     int two_improvement_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I);
+
+    void swap(const vector<unsigned int>& v_out, const vector<unsigned int>& v_in);
 
 };
 

@@ -100,6 +100,9 @@ void graph::read_mis() {
 }
 
 void graph::handle_update(const update& _update) {
+    unsigned int u = _update.u, v = _update.v;
+    if (nodes[u].node_status == _ADJACENT && nodes[v].node_status == _MIS)
+        std::swap(u, v);
     switch(_update.type) {
     /* case _VERTEX_ADDITION:
         add_vertex(_update.u);
@@ -108,14 +111,70 @@ void graph::handle_update(const update& _update) {
         delete_vertex(_update.u);
         break; */
     case _EDGE_ADDITION:
-        add_edge(_update.u, _update.v);
+        add_edge(u, v);
+        if (nodes[u].node_status == _MIS && nodes[v].node_status == _MIS) {
+            nodes[u].node_status = _CONFLICT;
+            nodes[v].node_status = _CONFLICT;
+            vector<unsigned int> I_u, I_v;
+            unsigned int size_u = one_improvement_vertex(u, I_u);
+            unsigned int size_v = one_improvement_vertex(v, I_v);
+            if (max(size_u, size_v) > 1) {
+                if (size_u > size_v) {
+                    vector<unsigned int> v_out(u);
+                    swap(v_out, I_u);
+                    I_v.clear();
+                    if (one_improvement_vertex(v, I_v) > 1) {
+                        v_out.clear();
+                        v_out.push_back(v);
+                        swap(v_out, I_v);
+                    }
+                } else {
+                    vector<unsigned int> v_out(v);
+                    swap(v_out, I_v);
+                    if (one_improvement_vertex(u, I_u) > 1) {
+                        v_out.clear();
+                        v_out.push_back(u);
+                        swap(v_out, I_u);
+                    }
+                }
+            }
+
+        } else if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT)
+            nodes[v].counter ++;
         break;
     case _EDGE_DELETION:
-        delete_edge(_update.u, _update.v);
+        delete_edge(u, v);
+        if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT) {
+            nodes[v].counter --;
+            if (nodes[v].counter == 0) {
+                nodes[v].node_status = _UNVISITD;
+            } else if (nodes[v].counter == 1) {
+                unsigned int w = 0;
+                vector<unsigned int> I;
+                edge* p_edge = nodes[v].edges;
+                while (p_edge != NULL) {
+                    if (nodes[p_edge->node_id].node_status == _MIS) {
+                        w = p_edge->node_id;
+                        break;
+                    }
+                }
+#ifndef NDEBUG
+                if (w == 0)
+                    cout << "counter wrong detected in handle_update edge deletion.\n";
+#endif
+                if (one_improvement_vertex(w, I) > 1) {
+                    vector<unsigned int> v_out(w);
+                    swap(v_out, I);
+                }
+            }
+        }
         break;
     default:
         break;
     }
+#ifndef NDEBUG
+    check_mis();
+#endif
 }
 
 void graph::greedy() {
@@ -225,7 +284,7 @@ void graph::greedy_dynamic(vector<unsigned int>& I) {
                         // 把w移动到和它度一样元素的首位，即和位于ds位置的元素互换位置
                         unsigned ds = degree_starts[degree[w]];
                         order[no[ds]] = order[w];
-                        swap(no[ds], no[order[w]]);
+                        std::swap(no[ds], no[order[w]]);
                         order[w] = ds;
                         degree_starts[degree[w]]++;
                         degree[w]--;
@@ -520,7 +579,7 @@ void graph::update_inf(const update& _update) {
     case _EDGE_DELETION:
         u = _update.u; v = _update.v;
         if (nodes[u].node_status == _ADJACENT && nodes[v].node_status == _MIS)
-            swap(u, v);
+            std::swap(u, v);
         if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT) {
             nodes[v].counter--;
             if (nodes[v].counter == 0)
@@ -544,22 +603,39 @@ int graph::one_improvement_vertex(unsigned int u, vector<unsigned int>& I) {
     for (int i = 0; i < V.size(); ++ i) index[V[i]] = i + 1;
 
     // construct subgraph G[V]
+#ifndef NDEBUG
     cout << "subgraph initialize.\n";
+#endif
     unsigned int subgraph_n = V.size();
     graph subgraph(subgraph_n);
     for (int i = 0; i < subgraph_n; ++ i)
         subgraph.add_node(i + 1, (unsigned int)V[i]);
     for (int i = 0; i < subgraph_n; ++ i) {
         edge* p_edge = nodes[V[i]].edges;
-        while (p_edge != NULL) {
-            if (p_edge->node_id > V[i] && find(V.begin(), V.end(), p_edge->node_id) != V.end())
-                subgraph.add_edge(i + 1, index[p_edge->node_id]);
+        int j = i + 1;
+        while (p_edge != NULL && j < V.size()) {
+            if (p_edge->node_id > V[i]) {
+                if (p_edge->node_id > V[j]) j ++;
+                else if (p_edge->node_id < V[j]) p_edge = p_edge->next_edge;
+                else {
+#ifndef NDEBUG
+                    if (index[p_edge->node_id] == 0)
+                        cout << "node " << p_edge->node_id << " is not in V\n";
+#endif
+                    subgraph.add_edge(i + 1, index[p_edge->node_id]);
+                    j ++;
+                    p_edge = p_edge->next_edge;
+                }
+            } else {
+                p_edge = p_edge->next_edge;
+            }
         }
     }
     // show subgraph
+#ifndef NDEBUG
     cout << "subgraph complete.\n";
     subgraph.show();
-
+#endif
     delete[] index;
 
     subgraph.greedy_dynamic(I);
@@ -569,6 +645,10 @@ int graph::one_improvement_vertex(unsigned int u, vector<unsigned int>& I) {
 
 int graph::two_improvement_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I) {
     return 0;
+}
+
+void graph::swap(const vector<unsigned int>& v_out, const vector<unsigned int>& v_in) {
+
 }
 
 void graph::test_subgraph() {
