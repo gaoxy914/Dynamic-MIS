@@ -192,15 +192,10 @@ void graph::greedy() {
         degree_buckets[nodes[i].degree]--;
     }
 
-    /* for (int i = 1; i <= n; ++i)
-        std::cout << "vertex " << i << " order " << order[i] << std::endl; */
     unsigned int* greedy_order = new unsigned int[n + 1]; // greedy_order[i] = j means that No.i is node j
     for (int i = 1; i <= n; ++i) {
         greedy_order[order[i]] = i;
     }
-
-    /* for (int i = 1; i <= n; ++i)
-        std::cout << "order " << i << " vertex " << greedy_order[i] << std::endl;*/
 
     for (int i = 1; i <= n; ++i) {
         if (nodes[greedy_order[i]].node_status == _UNVISITD) {
@@ -221,7 +216,10 @@ void graph::greedy() {
     delete[] order;
     delete[] greedy_order;
 
+#ifndef NDEBUG
     check_mis();
+    show();
+#endif
 }
 
 void graph::greedy_dynamic(vector<unsigned int>& I) {
@@ -316,7 +314,10 @@ void graph::greedy_dynamic(vector<unsigned int>& I) {
 
 void graph::show() {
     for (int i = 1; i <= n; ++i) {
-        cout << nodes[i].node_id << " degree: " << nodes[i].degree << " adjacent list : ";
+        cout << nodes[i].node_id << " degree: " << nodes[i].degree
+            << " node status: " << nodes[i].node_status
+            << " counter: " << nodes[i].counter << " adjacent list : ";
+
         edge* p_edge = nodes[i].edges;
         while (p_edge != NULL) {
             cout << p_edge->node_id << ", ";
@@ -460,31 +461,6 @@ void graph::add_edge(unsigned int u, unsigned int v) {
         p_newedge->next_edge = p_edge;
     }
 
-    /* if (nodes[u].node_status == _MIS && nodes[v].node_status == _MIS) {
-        if (nodes[u].degree < nodes[v].degree) swap(u, v);
-        vector<unsigned int> v_in, v_out;
-        // localserach_one_imp(u, v_in, v_out);
-        if (v_in.size() > v_out.size()) {
-            // update_neighbors(u);
-            update_neighbors(v_in, v_out);
-            return;
-        }
-
-        v_in.clear();
-        v_out.clear();
-        // localserach_one_imp(u, v_in, v_out);
-        if (v_in.size() > v_out.size()) {
-            // update_neighbors(v);
-            update_neighbors(v_in, v_out);
-            return;
-        }
-
-        update_neighbors(u);
-
-    } else if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT)
-        nodes[v].counter++;
-    else if (nodes[u].node_status == _ADJACENT && nodes[v].node_status == _MIS)
-        nodes[u].counter++; */
 }
 
 void graph::delete_edge(unsigned int u, unsigned int v) {
@@ -539,20 +515,6 @@ void graph::delete_edge(unsigned int u, unsigned int v) {
         return;
     }
 
-    /* if (nodes[u].node_status == _ADJACENT && nodes[v].node_status == _MIS)
-        swap(u, v);
-    if (nodes[u].node_status == _MIS && nodes[v].node_status == _ADJACENT) {
-        nodes[v].counter--;
-        if (nodes[v].counter == 0) {
-            nodes[v].node_status = _MIS;
-            mis++;
-            p_edge_v = nodes[v].edges;
-            while (p_edge_v != NULL) {
-                nodes[p_edge_v->node_id].counter++;
-                p_edge_v = p_edge_v->next_edge;
-            }
-        }
-    } */
 }
 
 void graph::update_inf(const update& _update) {
@@ -648,7 +610,24 @@ int graph::two_improvement_vertex(unsigned int u, unsigned int v, vector<unsigne
 }
 
 void graph::swap(const vector<unsigned int>& v_out, const vector<unsigned int>& v_in) {
+    for (auto v : v_in) {
+        nodes[v].node_status = _MIS;
+        nodes[v].counter = 0;
+        edge* p_edge = nodes[v].edges;
+        while (p_edge != NULL) {
+            nodes[p_edge->node_id].counter++;
+            nodes[p_edge->node_id].node_status = _ADJACENT;
+            p_edge = p_edge->next_edge;
+        }
+    }
 
+#ifndef NDEBUG
+    for (auto v : v_out)
+        if (nodes[v].node_status == _MIS)
+            cout << "wrong swap method.\n";
+
+    check_mis();
+#endif
 }
 
 void graph::test_subgraph() {
@@ -763,8 +742,8 @@ int main(int argc, char *argv[])
     g.show();
     // g.test();
     // g.show();
-    // g.greedy();
+    g.greedy();
     // g.greedy_dynamic();
-    g.test_subgraph();
+    // g.test_subgraph();
     return 0;
 }
