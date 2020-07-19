@@ -42,20 +42,31 @@ struct node {
     unsigned int node_id; // start from 1
     unsigned int degree;
     status node_status;
-    // unsigned int offset;
     unsigned int counter;
     edge* edges;
 
-    node() : node_id(0), degree(0), node_status(_UNVISITD), counter(0), edges(NULL) {}
+    // for noIS vertices
+    // mis_neighbor if counter = 1 or 2
+    // 0, otherwise
+    unsigned int mis_neighbor, mis_neighbor2;
 
-    node(unsigned int _node_id, unsigned int degree = 0, status _node_status = _UNVISITD, unsigned int _counter = 0)
-        : node_id(_node_id), degree(0), node_status(_node_status), counter(_counter), edges(NULL) {}
+    // for IS vertices
+    // neighbors with counter = 1 or 2
+    // edge act as a linklist of integer
+    edge* candidates;
+
+    node() : node_id(0), degree(0), node_status(_UNVISITD), counter(0),
+        mis_neighbor(0), mis_neighbor2(0), edges(NULL), candidates(NULL) {}
+
+    node(unsigned int _node_id) : node_id(_node_id), degree(0), node_status(_UNVISITD),
+        counter(0), mis_neighbor(0), mis_neighbor2(0), edges(NULL), candidates(NULL) {}
 };
 
 class graph {
 private:
     string file_path;
     string mis_path;
+    // string inst_path;
     unsigned int n, m, mis;
 
     node* nodes;
@@ -70,13 +81,11 @@ public:
     void read_graph();
     void read_mis();
 
-    void handle_update(const update& _update);
-
     void greedy();
-    void greedy_dynamic(vector<unsigned int>& I);
+    void handle_update(const update& _update);
+    void experiment(const char* _inst_file);
 
     void show();
-    void experiment(const char* _inst_file);
 
     void test_subgraph();
 
@@ -85,14 +94,17 @@ public:
 private:
     void check_mis();
 
+    void update_neighbor(unsigned int u);
+
     void add_node(unsigned int index, unsigned int node_id);
 
-    // void add_vertex(const unsigned int& u);
-    // void delete_vertex(const unsigned int& u);
+    void add_vertex(const unsigned int& u);
+    void delete_vertex(const unsigned int& u);
     void add_edge(unsigned int u, unsigned int v);
     void delete_edge(unsigned int u, unsigned int v);
 
-    void update_inf(const update& _update);
+    void greedy(vector<unsigned int>& I);
+    void greedy_dynamic(vector<unsigned int>& I);
 
     int one_improvement_vertex(unsigned int u, vector<unsigned int>& I);
     int two_improvement_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I);
