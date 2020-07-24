@@ -3,13 +3,17 @@
 
 #include "misheader.h"
 
-#define _VERTEX_ADDITION 0
-#define _VERTEX_DELETION 1
-#define _EDGE_ADDITION 2
-#define _EDGE_DELETION 3
+#define _EDGE_ADDITION 0
+#define _EDGE_DELETION 1
+#define _VERTEX_ADDITION 2
+#define _VERTEX_DELETION 3
 #define _DEFAULT -1
 
 #define _INST_NUM 1000
+
+#define GRAPH_PATH "Graphdata/"
+#define MIS_PATH "InitialMis/"
+#define INST_PATH "Instruction/"
 
 using namespace std;
 
@@ -23,12 +27,9 @@ struct update {
         : type(_type), u(_u), v(_v) {}
 };
 
-/* enum status {
-    _MIS, _DOMINATED, _UNVISITD, _DELETED
-}; */
 
 enum status {
-    _MIS, _ADJACENT, _UNVISITD, _CONFLICT, _DELETED
+    _MIS, _NOMIS, _UNVISITED, _CONFLICT, _DELETED
 };
 
 struct edge {
@@ -45,21 +46,10 @@ struct node {
     unsigned int counter;
     edge* edges;
 
-    // for noIS vertices
-    // mis_neighbor if counter = 1 or 2
-    // 0, otherwise
-    unsigned int mis_neighbor, mis_neighbor2;
+    node() : node_id(0), degree(0), node_status(_UNVISITED), counter(0), edges(NULL) {}
 
-    // for IS vertices
-    // neighbors with counter = 1 or 2
-    // edge act as a linklist of integer
-    edge* candidates;
-
-    node() : node_id(0), degree(0), node_status(_UNVISITD), counter(0),
-        mis_neighbor(0), mis_neighbor2(0), edges(NULL), candidates(NULL) {}
-
-    node(unsigned int _node_id) : node_id(_node_id), degree(0), node_status(_UNVISITD),
-        counter(0), mis_neighbor(0), mis_neighbor2(0), edges(NULL), candidates(NULL) {}
+    node(unsigned int _node_id) : node_id(_node_id), degree(0), node_status(_UNVISITED),
+        counter(0), edges(NULL) {}
 };
 
 class graph {
@@ -72,29 +62,33 @@ private:
     node* nodes;
     // unsigned int* edges;
 
+    long long time;
+
 public:
-    // graph(const char* _file_path, const char* _mis_path);
-    graph(const char* _file_path);
+    graph(const char* _file_path, const char* _mis_path);
+    // graph(const char* _file_path);
     graph(unsigned int _n);
     ~graph();
 
     void read_graph();
     void read_mis();
 
-    void greedy();
-    void handle_update(const update& _update);
-    void experiment(const char* _inst_file);
-
     void show();
 
-    void test_subgraph();
-
-    void test();
+    void greedy();
+    void experiment(const char* _inst_file);
 
 private:
-    void check_mis();
+    void handle_vertex_deletion(unsigned int u);
+    void handle_edge_addition(unsigned int u, unsigned int v);
+    void handle_edge_deletion(unsigned int u, unsigned int v);
 
-    void update_neighbor(unsigned int u);
+    void check_mis();
+    void check_swap();
+
+    void add_into_IS(unsigned int u);
+    void remove_from_IS(unsigned int u);
+    void swap(const vector<unsigned int>& v_out, const vector<unsigned int>& v_in);
 
     void add_node(unsigned int index, unsigned int node_id);
 
@@ -106,10 +100,8 @@ private:
     void greedy(vector<unsigned int>& I);
     void greedy_dynamic(vector<unsigned int>& I);
 
-    int one_improvement_vertex(unsigned int u, vector<unsigned int>& I);
-    int two_improvement_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I);
-
-    void swap(const vector<unsigned int>& v_out, const vector<unsigned int>& v_in);
+    int one_swapable_vertex(unsigned int u, vector<unsigned int>& I);
+    int two_swapable_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I);
 
 };
 

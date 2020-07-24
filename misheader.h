@@ -11,6 +11,12 @@
 #include <cmath>
 #include <queue>
 
+#define _LINUX_
 
+#ifdef _LINUX_
+    #include <sys/time.h>
+#endif
+
+#define NDEBUG
 
 #endif
