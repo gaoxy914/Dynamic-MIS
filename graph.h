@@ -5,8 +5,8 @@
 
 #define _EDGE_ADDITION 0
 #define _EDGE_DELETION 1
-#define _VERTEX_ADDITION 2
-#define _VERTEX_DELETION 3
+#define _VERTEX_DELETION 2
+#define _VERTEX_ADDITION 3
 #define _DEFAULT -1
 
 #define _INST_NUM 1000

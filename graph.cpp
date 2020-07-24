@@ -191,6 +191,7 @@ void graph::experiment(const char* _inst_path) {
             case _VERTEX_ADDITION:
                 break;
             case _VERTEX_DELETION:
+                handle_vertex_deletion(updates[i].u + 1);
                 break;
             case _EDGE_ADDITION:
                 handle_edge_addition(updates[i].u + 1, updates[i].v + 1);
@@ -207,6 +208,63 @@ void graph::experiment(const char* _inst_path) {
 
     check_mis();
     check_swap();
+}
+
+void graph::handle_vertex_deletion(unsigned int u) {
+#ifndef _LINUX_
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+#endif
+    if (nodes[u].node_status == _MIS) {
+        vector<unsigned int> I;
+        if (one_swapable_vertex(u, I) >= 1) {
+            vector<unsigned int> v_out = {u};
+            swap(v_out, I);
+        } else {
+            nodes[u].node_status = _DELETED;
+            mis --;
+            edge* p_edge = nodes[u].edges;
+            while (p_edge != NULL) {
+                unsigned int w = p_edge->node_id;
+                if (nodes[w].node_status != _MIS) {
+                    nodes[w].counter --;
+                    /* if (nodes[w].counter == 0) {
+                        mis ++;
+                        add_into_IS(w);
+                    } */
+                }
+                p_edge = p_edge->next_edge;
+            }
+            p_edge = nodes[u].edges;
+            while (p_edge != NULL) {
+                unsigned int w = p_edge->node_id;
+                if (nodes[w].counter == 1) {
+                    unsigned int x = 0;
+                    vector<unsigned int> I;
+                    edge* p_edge_w = nodes[w].edges;
+                    while (p_edge_w != NULL) {
+                        if (nodes[p_edge_w->node_id].node_status == _MIS) {
+                            x = p_edge_w->node_id;
+                            break;
+                        }
+                        p_edge_w = p_edge_w->next_edge;
+                    }
+#ifndef NDEBUG
+                    if (x == 0) {
+                        cout << "counter wrong detected in handle_update edge addition.\n";
+                        exit(1);
+                    }
+#endif
+                    if (one_swapable_vertex(x, I) > 1) {
+                        vector<unsigned int> v_out = {x};
+                        swap(v_out, I);
+                    }
+                }
+                p_edge = p_edge->next_edge;
+            }
+        }
+    }
+    delete_vertex(u);
 }
 
 
@@ -258,10 +316,11 @@ void graph::handle_edge_addition(unsigned int u, unsigned int v) {
                 unsigned int w = p_edge->node_id;
                 if (nodes[w].node_status != _MIS) {
                     nodes[w].counter --;
-                    if (nodes[w].counter == 0) {
+                    /* if (nodes[w].counter == 0) {
                         mis ++;
+                        cout << w << " counter = 0.\n";
                         add_into_IS(w);
-                    }
+                    } */
                 }
                 p_edge = p_edge->next_edge;
             }
@@ -494,19 +553,24 @@ void graph::add_vertex(const unsigned int& u) {
 }
 
 void graph::delete_vertex(const unsigned int& u) {
+#ifndef NDEBUG
     if (u <= 0 || u > n || nodes[u].node_status == _DELETED) {
         cout << "vertex " << u << " does not exist.\n";
         return;
     }
+#endif
     edge* p_edge = nodes[u].edges;
     while (p_edge != NULL) {
-        delete_edge(u, p_edge->node_id);
+        unsigned int v = p_edge->node_id;
         p_edge = p_edge->next_edge;
+        delete_edge(u, v);
     }
     nodes[u].node_status = _DELETED;
+    nodes[u].counter = 0;
 }
 
 void graph::add_edge(unsigned int u, unsigned int v) {
+#ifndef NDEBUG
     if (u <= 0 || u > n || v <= 0 || v > n) {
         cout << "vertices" << u << " or " << v << "does not exist.\n";
         return;
@@ -515,6 +579,7 @@ void graph::add_edge(unsigned int u, unsigned int v) {
         cout << "vertices" << u << " or " << v << "is deleted.\n";
         return;
     }
+#endif
 
     nodes[u].degree ++;
     edge* p_newedge = new edge(v);
@@ -553,6 +618,7 @@ void graph::add_edge(unsigned int u, unsigned int v) {
 }
 
 void graph::delete_edge(unsigned int u, unsigned int v) {
+#ifndef NDEBUG
     if (u <= 0 || u > n || v <= 0 || v > n) {
         cout << "vertices" << u << " or " << v << "does not exist.\n";
         return;
@@ -561,6 +627,7 @@ void graph::delete_edge(unsigned int u, unsigned int v) {
         cout << "edge (" << u << ", " << v << ") does not exits.\n";
         return;
     }
+#endif
     edge* p_edge = nodes[u].edges;
     edge* p_pre_edge = p_edge;
     while (p_edge != NULL) {
@@ -577,10 +644,12 @@ void graph::delete_edge(unsigned int u, unsigned int v) {
         p_pre_edge = p_edge;
         p_edge = p_edge->next_edge;
     }
+#ifndef NDEBUG
     if (p_edge == NULL) {
         cout << "edge (" << u << ", " << v << ") does not exist.\n";
         return;
     }
+#endif
 
     p_edge = nodes[v].edges;
     p_pre_edge = p_edge;
@@ -598,12 +667,12 @@ void graph::delete_edge(unsigned int u, unsigned int v) {
         p_pre_edge = p_edge;
         p_edge = p_edge->next_edge;
     }
-
+#ifndef NDEBUG
     if (p_edge == NULL) {
         cout << "edge (" << u << ", " << v << ") does not exist.\n";
         return;
     }
-
+#endif
 }
 
 void graph::greedy(vector<unsigned int>& I) {
@@ -625,11 +694,9 @@ void graph::greedy(vector<unsigned int>& I) {
     for (int i = 1; i <= n; ++i) {
         greedy_order[order[i]] = i;
     }
-    int res = 0;
     for (int i = 1; i <= n; ++i) {
         if (nodes[greedy_order[i]].node_status == _UNVISITED) {
             nodes[greedy_order[i]].node_status = _MIS;
-            res ++;
             I.push_back(nodes[greedy_order[i]].node_id);
             edge* p_edge = nodes[greedy_order[i]].edges;
             while (p_edge != NULL) {
@@ -730,49 +797,52 @@ int graph::one_swapable_vertex(unsigned int u, vector<unsigned int>& I) {
     vector<unsigned int> V;
     edge* p_edge = nodes[u].edges;
     while (p_edge != NULL) {
-        if (nodes[p_edge->node_id].counter == 1 && nodes[p_edge->node_id].node_status == _NOMIS) {
+        if (nodes[p_edge->node_id].counter == 1 &&
+                nodes[p_edge->node_id].node_status == _NOMIS) {
             V.push_back(p_edge->node_id);
         }
         p_edge = p_edge->next_edge;
     }
 
-    if (V.size() >= 1) {
-        unsigned int* index = new unsigned int[n + 1];
-        memset(index, 0, sizeof(unsigned int)*(n + 1));
-        for (int i = 0; i < V.size(); ++ i) index[V[i]] = i + 1;
+    if (V.size() <= 1) {
+        I.swap(V);
+        return I.size();
+    }
 
-        // construct subgraph G[V]
-        unsigned int subgraph_n = V.size();
-        graph subgraph(subgraph_n);
-        for (int i = 0; i < subgraph_n; ++ i)
-            subgraph.add_node(i + 1, (unsigned int)V[i]);
-        for (int i = 0; i < subgraph_n; ++ i) {
-            edge* p_edge = nodes[V[i]].edges;
-            int j = i + 1;
-            while (p_edge != NULL && j < V.size()) {
-                if (p_edge->node_id > V[i]) {
-                    if (p_edge->node_id > V[j]) j ++;
-                    else if (p_edge->node_id < V[j]) p_edge = p_edge->next_edge;
-                    else {
+    unsigned int* index = new unsigned int[n + 1];
+    memset(index, 0, sizeof(unsigned int)*(n + 1));
+    for (int i = 0; i < V.size(); ++ i) index[V[i]] = i + 1;
+
+    // construct subgraph G[V]
+    unsigned int subgraph_n = V.size();
+    graph subgraph(subgraph_n);
+    for (int i = 0; i < subgraph_n; ++ i)
+        subgraph.add_node(i + 1, (unsigned int)V[i]);
+    for (int i = 0; i < subgraph_n; ++ i) {
+        edge* p_edge = nodes[V[i]].edges;
+        int j = i + 1;
+        while (p_edge != NULL && j < V.size()) {
+            if (p_edge->node_id > V[i]) {
+                if (p_edge->node_id > V[j]) j ++;
+                else if (p_edge->node_id < V[j]) p_edge = p_edge->next_edge;
+                else {
 #ifndef NDEBUG
-                        if (index[p_edge->node_id] == 0)
-                            cout << "node " << p_edge->node_id << " is not in V\n";
+                    if (index[p_edge->node_id] == 0)
+                        cout << "node " << p_edge->node_id << " is not in V\n";
 #endif
-                        subgraph.add_edge(i + 1, index[p_edge->node_id]);
-                        j ++;
-                        p_edge = p_edge->next_edge;
-                    }
-                } else {
+                    subgraph.add_edge(i + 1, index[p_edge->node_id]);
+                    j ++;
                     p_edge = p_edge->next_edge;
                 }
+            } else {
+                p_edge = p_edge->next_edge;
             }
         }
-        delete[] index;
-
-        // subgraph.greedy_dynamic(I);
-        subgraph.greedy(I);
-
     }
+    delete[] index;
+
+    // subgraph.greedy_dynamic(I);
+    subgraph.greedy(I);
 
     return I.size();
 }
@@ -796,8 +866,8 @@ int main(int argc, char *argv[])
     // g.show();
     g.read_mis();
     g.experiment(argv[3]);
-    // update u(0, 2, 3);
-    // g.handle_update(u);
+    // g.handle_vertex_deletion(3);
+    // g.check_mis();
     // g.show();
     // g.greedy_dynamic();
     // g.test_subgraph();

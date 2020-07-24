@@ -8,10 +8,10 @@ OBJGRAPH = graph.o
 all: $(GRAPHTEST)
 
 graph: $(OBJGRAPH)
-	$(CC) $(CFLAGS) $(OBJGRAPH) -o $(GRAPHTEST)
+	$(CC) $(CFLAGS) -O3 $(OBJGRAPH) -o $(GRAPHTEST)
 
 graph.o: graph.cpp
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -O3 -c $< -o $@
 
 clean:
 	rm *.o $(GRAPHTEST)
