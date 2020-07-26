@@ -217,10 +217,20 @@ void graph::handle_vertex_deletion(unsigned int u) {
 #endif
     if (nodes[u].node_status == _MIS) {
         vector<unsigned int> I;
+#ifdef _TWO_SWAP_
+        unsigned int v = 0;
+#endif
         if (one_swapable_vertex(u, I) >= 1) {
             vector<unsigned int> v_out = {u};
             swap(v_out, I);
-        } else {
+        }
+#ifdef _TWO_SWAP_
+        else if (two_swapable_vertex(u, v, I) >= 2) {
+            vector<unsigned int> v_out = {u, v};
+            swap(v_out, I);
+        }
+#endif
+        else {
             nodes[u].node_status = _DELETED;
             mis --;
             edge* p_edge = nodes[u].edges;
@@ -251,7 +261,7 @@ void graph::handle_vertex_deletion(unsigned int u) {
                     }
 #ifndef NDEBUG
                     if (x == 0) {
-                        cout << "counter wrong detected in handle_update edge addition.\n";
+                        cout << "counter wrong detected in handle_update vertex deletion.\n";
                         exit(1);
                     }
 #endif
@@ -260,6 +270,35 @@ void graph::handle_vertex_deletion(unsigned int u) {
                         swap(v_out, I);
                     }
                 }
+#ifdef _TWO_SWAP_
+                else if (nodes[w].counter == 2) {
+                    unsigned int x = 0, y = 0;
+                    vector<unsigned int> I;
+                    edge* p_edge_w = nodes[w].edges;
+                    while (p_edge_w != NULL) {
+                        if (nodes[p_edge_w->node_id].node_status == _MIS) {
+                            if (!x)
+                                x = p_edge_w->node_id;
+                            else {
+                                y = p_edge_w->node_id;
+                                break;
+                            }
+                        }
+                        p_edge_w = p_edge_w->next_edge;
+                    }
+#ifndef NDEBUG
+                    if (x == 0 || y == 0) {
+                        cout << "counter wrong detected in handle_update vertex deletion.\n";
+                        exit(1)
+                    }
+#endif
+                    if (two_swapable_vertex(x, y, I) > 2) {
+                        vector<unsigned int> v_out = {x, y};
+                        swap(v_out, I);
+                    }
+
+                }
+#endif
                 p_edge = p_edge->next_edge;
             }
         }
@@ -282,7 +321,7 @@ void graph::handle_edge_addition(unsigned int u, unsigned int v) {
         nodes[u].counter = 1;
         nodes[v].node_status = _CONFLICT;
         nodes[v].counter = 1;
-        vector<unsigned int> I_u, I_v;
+        vector<unsigned int> I_u, I_v, I;
         unsigned int size_u = one_swapable_vertex(u, I_u);
         unsigned int size_v = one_swapable_vertex(v, I_v);
         // there may be swapable vertex in IS
@@ -300,7 +339,14 @@ void graph::handle_edge_addition(unsigned int u, unsigned int v) {
                 v_out.push_back(v);
                 swap(v_out, I_v);
             }
-        } else {
+        }
+#ifdef _TWO_SWAP_
+        else if (two_swapable_vertex(u, v, I) >= 2) {
+            vector<unsigned int> v_out = {u, v};
+            swap(v_out, I);
+        }
+#endif
+        else {
             // there is no swapable vertex in IS
             // remove the vertex with higher degree from IS
 
@@ -350,6 +396,36 @@ void graph::handle_edge_addition(unsigned int u, unsigned int v) {
                     }
 
                 }
+#ifdef _TWO_SWAP_
+                else if (nodes[w].counter == 2) {
+                    unsigned int x = 0, y = 0;
+                    vector<unsigned int> I;
+                    edge* p_edge_w = nodes[w].edges;
+                    while (p_edge_w != NULL) {
+                        if (nodes[p_edge_w->node_id].node_status == _MIS) {
+                            if (!x)
+                                x = p_edge_w->node_id;
+                            else {
+                                y = p_edge_w->node_id;
+                                break;
+                            }
+                        }
+                        p_edge_w = p_edge_w->next_edge;
+                    }
+#ifndef NDEBUG
+                    if (x == 0 || y == 0) {
+                        cout << "counter wrong detected in handle_update vertex deletion.\n";
+                        exit(1)
+                    }
+#endif
+                    if (two_swapable_vertex(x, y, I) > 2) {
+                        vector<unsigned int> v_out = {x, y};
+                        swap(v_out, I);
+                    }
+
+                }
+#endif
+
                 p_edge = p_edge->next_edge;
             }
 
@@ -403,8 +479,36 @@ void graph::handle_edge_deletion(unsigned int u, unsigned int v) {
                 swap(v_out, I);
             }
         }
+#ifdef _TWO_SWAP_
+        else if (nodes[v].counter == 2) {
+            unsigned int x = 0, y = 0;
+            vector<unsigned int> I;
+            edge* p_edge = nodes[v].edges;
+            while (p_edge != NULL) {
+                if (nodes[p_edge->node_id].node_status == _MIS) {
+                    if (!x)
+                        x = p_edge->node_id;
+                    else {
+                        y = p_edge->node_id;
+                        break;
+                    }
+                }
+                p_edge = p_edge->next_edge;
+            }
+#ifndef NDEBUG
+            if (x == 0 || y == 0) {
+                cout << "counter wrong detected in handle_update vertex deletion.\n";
+                exit(1)
+            }
+#endif
+            if (two_swapable_vertex(x, y, I) > 2) {
+                vector<unsigned int> v_out = {x, y};
+                swap(v_out, I);
+            }
+        }
+#endif
     } else {
-        if (nodes[v].counter == 1) {
+        if (nodes[v].counter == 1 && nodes[u].counter == 1) {
             unsigned int w = 0;
             vector<unsigned int> I;
             edge* p_edge = nodes[v].edges;
@@ -426,6 +530,34 @@ void graph::handle_edge_deletion(unsigned int u, unsigned int v) {
                 swap(v_out, I);
             }
         }
+#ifdef _TWO_SWAP_
+        else if (nodes[v].counter == 2 && nodes[u].counter == 2) {
+            unsigned int x = 0, y = 0;
+            vector<unsigned int> I;
+            edge* p_edge = nodes[v].edges;
+            while (p_edge != NULL) {
+                if (nodes[p_edge->node_id].node_status == _MIS) {
+                    if (!x)
+                        x = p_edge->node_id;
+                    else {
+                        y = p_edge->node_id;
+                        break;
+                    }
+                }
+                p_edge = p_edge->next_edge;
+            }
+#ifndef NDEBUG
+            if (x == 0 || y == 0) {
+                cout << "counter wrong detected in handle_update vertex deletion.\n";
+                exit(1)
+            }
+#endif
+            if (two_swapable_vertex(x, y, I) > 2) {
+                vector<unsigned int> v_out = {x, y};
+                swap(v_out, I);
+            }
+        }
+#endif
     }
 #ifdef _LINUX_
     gettimeofday(&end, NULL);
@@ -465,7 +597,7 @@ void graph::check_mis() {
             if (!find)
                 cout << "CHECK_IS: WA not maximal.\n";
             if (mis_cnt != nodes[i].counter)
-                cout << "CHECK_IS: WA wrong counter.\n";
+                cout << "CHECK_IS: vertex " << i << " wrong counter.\n";
         }
     }
     cout << "|MIS| " << cnt << ", " << mis << endl;
@@ -473,6 +605,7 @@ void graph::check_mis() {
 
 void graph::check_swap() {
     int swap_cnt = 0;
+    int swap_cnt_2 = 0;
     for (int i = 1; i <= n; ++i) {
         if (nodes[i].node_status == _MIS) {
             vector<unsigned int> I;
@@ -490,10 +623,19 @@ void graph::check_swap() {
                 // vector<unsigned int> v_out = {nodes[i].node_id};
                 // swap(v_out, I);
             }
+            I.clear();
+            unsigned int v = 0;
+            if (two_swapable_vertex(nodes[i].node_id, v, I) > 2) {
+                swap_cnt_2 ++;
+                vector<unsigned int> v_out = {nodes[i].node_id, v};
+                swap(v_out, I);
+            }
         }
     }
     cout << "CHECK_SWAP: |swapable| " << swap_cnt << endl;
     cout << "CHECK_SWAP: after swap |MIS| " << mis << endl;
+    cout << "CHECK_SWAP: |2-swapable| " << swap_cnt_2 << endl;
+    cout << "CHECK_SWAP: after 2-swap |MIS| " << mis << endl;
 }
 
 void graph::add_into_IS(unsigned int u) {
@@ -572,11 +714,11 @@ void graph::delete_vertex(const unsigned int& u) {
 void graph::add_edge(unsigned int u, unsigned int v) {
 #ifndef NDEBUG
     if (u <= 0 || u > n || v <= 0 || v > n) {
-        cout << "vertices" << u << " or " << v << "does not exist.\n";
+        cout << "vertices " << u << " or " << v << "does not exist.\n";
         return;
     }
     if (nodes[u].node_status == _DELETED || nodes[v].node_status == _DELETED) {
-        cout << "vertices" << u << " or " << v << "is deleted.\n";
+        cout << "vertices " << u << " or " << v << "is deleted.\n";
         return;
     }
 #endif
@@ -620,7 +762,7 @@ void graph::add_edge(unsigned int u, unsigned int v) {
 void graph::delete_edge(unsigned int u, unsigned int v) {
 #ifndef NDEBUG
     if (u <= 0 || u > n || v <= 0 || v > n) {
-        cout << "vertices" << u << " or " << v << "does not exist.\n";
+        cout << "vertices " << u << " or " << v << "does not exist.\n";
         return;
     }
     if (nodes[u].node_status == _DELETED || nodes[v].node_status == _DELETED) {
@@ -847,8 +989,84 @@ int graph::one_swapable_vertex(unsigned int u, vector<unsigned int>& I) {
     return I.size();
 }
 
-int graph::two_swapable_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I) {
-    return 0;
+int graph::two_swapable_vertex(unsigned int u, unsigned int& v, vector<unsigned int>& I) {
+    unordered_map<unsigned int, vector<unsigned int> > V;
+    edge* p_edge = nodes[u].edges;
+
+    while (p_edge != NULL) {
+        if (nodes[p_edge->node_id].counter == 2 &&
+                nodes[p_edge->node_id].node_status == _NOMIS) {
+            unsigned int w = 0;
+            edge* p_edge_tmp = nodes[p_edge->node_id].edges;
+            while (p_edge_tmp != NULL) {
+                if (nodes[p_edge_tmp->node_id].node_status == _MIS &&
+                        p_edge_tmp->node_id != u) {
+                    w = p_edge_tmp->node_id;
+                    break;
+                }
+                p_edge_tmp = p_edge_tmp->next_edge;
+            }
+#ifndef NDEBUG
+            if (w == 0) {
+                cout << "didn't find the second IS-neighbor.\n";
+                exit(1);
+            }
+#endif
+            if (V.count(w) != 0)
+                V[w].push_back(p_edge->node_id);
+            else {
+                V[w] = vector<unsigned int>();
+                V[w].push_back(p_edge->node_id);
+            }
+        }
+        p_edge = p_edge->next_edge;
+    }
+
+    int size = 0;
+    if (v == 0) {
+        for (auto it : V) {
+            v = it.second.size() > size ? it.first : v;
+            size = max(size, (int)it.second.size());
+        }
+    } else
+        size = V[v].size();
+
+    unsigned int* index = new unsigned int[n + 1];
+    memset(index, 0, sizeof(unsigned int)*(n + 1));
+    for (int i = 0; i < V[v].size(); ++ i) index[V[v][i]] = i + 1;
+
+    unsigned int subgraph_n = size;
+    graph subgraph(subgraph_n);
+    for (int i = 0; i < subgraph_n; ++ i)
+        subgraph.add_node(i + 1, (unsigned int)V[v][i]);
+
+    for (int i = 0; i < subgraph_n; ++ i) {
+        edge* p_edge = nodes[V[v][i]].edges;
+        int j = i + 1;
+        while (p_edge != NULL && j < size) {
+            if (p_edge->node_id > V[v][i]) {
+                if (p_edge->node_id > V[v][j]) j ++;
+                else if (p_edge->node_id < V[v][j]) p_edge = p_edge->next_edge;
+                else {
+#ifndef NDEBUG
+                    if (index[p_edge->node_id] == 0)
+                        cout << "node " << p_edge->node_id << " is not in V.\n";
+#endif
+                    subgraph.add_edge(i + 1, index[p_edge->node_id]);
+                    j ++;
+                    p_edge = p_edge->next_edge;
+                }
+            } else {
+                p_edge = p_edge->next_edge;
+            }
+        }
+    }
+
+    delete[] index;
+
+    subgraph.greedy(I);
+
+    return I.size();
 }
 
 
@@ -858,18 +1076,23 @@ int graph::two_swapable_vertex(unsigned int u, unsigned int v, vector<unsigned i
 int main(int argc, char *argv[])
 {
     // std::cout << argv[1] << std::endl;
-    graph g(argv[1], argv[2]);
-    g.read_graph();
-    // g.show();
-    // g.test();
-    // g.greedy();
-    // g.show();
-    g.read_mis();
-    g.experiment(argv[3]);
-    // g.handle_vertex_deletion(3);
-    // g.check_mis();
-    // g.show();
-    // g.greedy_dynamic();
-    // g.test_subgraph();
+    cout << argc << endl;
+    if (argc == 2) {
+        string file_path = (string)argv[1] + ".bin";
+        string mis_path = (string)argv[1] + ".mis";
+        string inst_path = (string)argv[1] + ".inst";
+        graph g(file_path.c_str(), mis_path.c_str());
+        g.read_graph();
+        g.read_mis();
+        g.experiment(inst_path.c_str());
+    } else if (argc == 4) {
+        graph g(argv[1], argv[2]);
+        g.read_graph();
+        g.read_mis();
+        g.experiment(argv[3]);
+    }
+    else {
+        cout << "error.\n";
+    }
     return 0;
 }

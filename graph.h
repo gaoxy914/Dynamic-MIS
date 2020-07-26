@@ -78,7 +78,7 @@ public:
     void greedy();
     void experiment(const char* _inst_file);
 
-private:
+// private:
     void handle_vertex_deletion(unsigned int u);
     void handle_edge_addition(unsigned int u, unsigned int v);
     void handle_edge_deletion(unsigned int u, unsigned int v);
@@ -101,7 +101,7 @@ private:
     void greedy_dynamic(vector<unsigned int>& I);
 
     int one_swapable_vertex(unsigned int u, vector<unsigned int>& I);
-    int two_swapable_vertex(unsigned int u, unsigned int v, vector<unsigned int>& I);
+    int two_swapable_vertex(unsigned int u, unsigned int& v, vector<unsigned int>& I);
 
 };
 
