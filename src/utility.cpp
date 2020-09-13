@@ -1,43 +1,5 @@
 #include "utility.h"
 
-void mem_usage(double& vm_usage, double& resident_set) {
-    vm_usage = 0.0;
-    resident_set = 0.0;
-    ifstream stat_stream("/proc/self/stata", ios_base::in);
-    string pid, comm, state, ppid, pgrp, session, tty_nr;
-    string tpgid, flags, minflt, cminflt, majflt, cmajflt;
-    string utime, stime, cutime, cstime, priority, nice;
-    string O, itrealvalue, starttime;
-    unsigned long vsize;
-    long rss;
-    stat_stream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr
-        >> tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt
-       >> utime >> stime >> cutime >> cstime >> priority >> nice
-        >> O >> itrealvalue >> starttime >> vsize >> rss;
-        long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024;
-        vm_usage = vsize / 1024.0;
-        resident_set = rss*page_size_kb;
-}
-
-void int2char(const u_int& length, u_int *src, u_char *des) {
-    for (u_int i = 0; i < length; ++ i) {
-        u_int offset = i*sizeof(u_int);
-        des[offset] = (u_char)src[i];
-        des[offset + 1] = (u_char)(src[i]>>8);
-        des[offset + 2] = (u_char)(src[i]>>16);
-        des[offset + 3] = (u_char)(src[i]>>24);
-        // if (i == 0) printf("%x %x %x %x\n", des[offset], des[offset + 1], des[offset + 2], des[offset + 3]);
-    }
-}
-
-void char2int(const u_int& length, u_char *src, u_int *des) {
-    for (u_int i = 0; i < length; ++ i) {
-        u_int offset = i*sizeof(u_int);
-        des[i] = (u_int)src[offset] | (u_int)src[offset + 1]<<8 | (u_int)src[offset + 2]<<16 | (u_int)src[offset + 3]<<24;
-    }
-}
-
-
 blockmanager::blockmanager(const char *file_name, int file_mode, int block_size) {
     this->block_size = block_size;
     strcpy(this->file_name, file_name);
